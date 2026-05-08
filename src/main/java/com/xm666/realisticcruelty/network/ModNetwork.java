@@ -1,22 +1,27 @@
-package com.xm666.realisticcruelty.network;
+package com.moskowitz.realisticcruelty.network; // Use your package
 
-import com.xm666.realisticcruelty.CruelMod;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
-
-import java.util.Optional;
+import com.moskowitz.realisticcruelty.CruelMod;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public class ModNetwork {
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(CruelMod.MOD_ID),
-            () -> "",
-            (string) -> true,
-            (string) -> true
-    );
+    
+    public static void register(IEventBus modEventBus) {
+        modEventBus.addListener(ModNetwork::onRegisterPayloads);
+    }
 
-    public static void register() {
-        CHANNEL.registerMessage(0, GorePacket.class, GorePacket::write, GorePacket::read, GorePacket::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
+        // The registrar handles versioning and channel setup automatically now
+        final PayloadRegistrar registrar = event.registrar(CruelMod.MOD_ID)
+                .versioned("1.0.0");
+
+        // Register the GorePacket as a Client-bound payload
+        registrar.playToClient(
+                GorePacket.TYPE,
+                GorePacket.STREAM_CODEC,
+                GorePacket::handle
+        );
     }
 }
