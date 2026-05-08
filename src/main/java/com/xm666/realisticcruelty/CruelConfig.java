@@ -1,80 +1,92 @@
-package com.xm666.realisticcruelty;
+package com.moskowitz.realisticcruelty;
 
-import com.xm666.realisticcruelty.event.ClientGoreEvent;
-import com.xm666.realisticcruelty.event.GoreEvent;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
+import com.moskowitz.realisticcruelty.event.ClientGoreEvent;
+import com.moskowitz.realisticcruelty.event.GoreEvent;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.event.config.ModConfigEvent;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.NeoForge;
 
 public class CruelConfig {
-    public static final ForgeConfigSpec client;
-    public static final ForgeConfigSpec common;
-    public static final ForgeConfigSpec.ConfigValue<Float> bloodAmount;
-    public static final ForgeConfigSpec.ConfigValue<Double> bloodSpeed;
-    public static final ForgeConfigSpec.ConfigValue<Double> bloodSpread;
-    public static final ForgeConfigSpec.ConfigValue<Boolean> splatEnable;
-    public static final ForgeConfigSpec.ConfigValue<Float> fogSize;
-    public static final ForgeConfigSpec.ConfigValue<Integer> splashAmount;
-    public static final ForgeConfigSpec.ConfigValue<Float> soundVolume;
-    public static final ForgeConfigSpec.ConfigValue<Integer> clientMelee;
-    public static final ForgeConfigSpec.ConfigValue<Integer> clientTrident;
-    public static final ForgeConfigSpec.ConfigValue<Boolean> serverEnable;
+    public static final ModConfigSpec client;
+    public static final ModConfigSpec common;
+    
+    public static final ModConfigSpec.ConfigValue<Float> bloodAmount;
+    public static final ModConfigSpec.ConfigValue<Double> bloodSpeed;
+    public static final ModConfigSpec.ConfigValue<Double> bloodSpread;
+    public static final ModConfigSpec.ConfigValue<Boolean> splatEnable;
+    public static final ModConfigSpec.ConfigValue<Float> fogSize;
+    public static final ModConfigSpec.ConfigValue<Integer> splashAmount;
+    public static final ModConfigSpec.ConfigValue<Float> soundVolume;
+    public static final ModConfigSpec.ConfigValue<Integer> clientMelee;
+    public static final ModConfigSpec.ConfigValue<Integer> clientTrident;
+    public static final ModConfigSpec.ConfigValue<Boolean> serverEnable;
 
     static {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         builder.push("particle");
         builder.push("blood");
         bloodAmount = builder.define("amount", 1.0F);
         bloodSpeed = builder.define("speed", 0.3D);
         bloodSpread = builder.define("spread", 60.0D);
         builder.pop();
+        
         builder.push("splat");
         splatEnable = builder.define("enable", true);
         builder.pop();
+        
         builder.push("fog");
         fogSize = builder.define("size", 0.5F);
         builder.pop();
+        
         builder.push("splash");
         splashAmount = builder.define("amount", 3);
         builder.pop();
+        
         soundVolume = builder.define("soundVolume", 1.0F);
         builder.pop();
+        
         builder.push("clientOnlyGore");
         clientMelee = builder.define("melee", 0);
         clientTrident = builder.define("trident", 0);
         builder.pop();
         client = builder.build();
-        builder = new ForgeConfigSpec.Builder();
+
+        builder = new ModConfigSpec.Builder();
         serverEnable = builder.define("enable", true);
         common = builder.build();
     }
 
-    public static void register() {
-        ModLoadingContext context = ModLoadingContext.get();
-        context.registerConfig(ModConfig.Type.CLIENT, client);
-        context.registerConfig(ModConfig.Type.COMMON, common);
+    public static void register(IEventBus modEventBus) {
+        // Registering to the mod event bus ensures the config events are captured
+        modEventBus.addListener(CruelConfig::onLoad);
+    }
+
+    // This method is called from your main CruelMod constructor
+    public static void registerConfigs(ModContainer container) {
+        container.registerConfig(ModConfig.Type.CLIENT, client);
+        container.registerConfig(ModConfig.Type.COMMON, common);
     }
 
     @SubscribeEvent
     public static void onLoad(ModConfigEvent.Loading event) {
         ModConfig config = event.getConfig();
         if (config.getModId().equals(CruelMod.MOD_ID)) {
-            switch (config.getType()) {
-                case CLIENT -> {
-                    if (CruelConfig.clientMelee.get() >= 0) {
-                        MinecraftForge.EVENT_BUS.addListener(ClientGoreEvent::onPlayerAttackTarget);
-                    }
-                    if (CruelConfig.clientTrident.get() >= 0) {
-                        MinecraftForge.EVENT_BUS.addListener(ClientGoreEvent::onProjectileImpact);
-                    }
+            if (config.getType() == ModConfig.Type.CLIENT) {
+                // Registering client-side gore events to the NeoForge bus
+                if (CruelConfig.clientMelee.get() >= 0) {
+                    NeoForge.EVENT_BUS.addListener(ClientGoreEvent::onPlayerAttackTarget);
                 }
-                case COMMON -> {
-                    if (CruelConfig.serverEnable.get()) {
-                        MinecraftForge.EVENT_BUS.register(GoreEvent.class);
-                    }
+                if (CruelConfig.clientTrident.get() >= 0) {
+                    NeoForge.EVENT_BUS.addListener(ClientGoreEvent::onProjectileImpact);
+                }
+            } else if (config.getType() == ModConfig.Type.COMMON) {
+                // Registering server/common events
+                if (CruelConfig.serverEnable.get()) {
+                    NeoForge.EVENT_BUS.register(GoreEvent.class);
                 }
             }
         }
