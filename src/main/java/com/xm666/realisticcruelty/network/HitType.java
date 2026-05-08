@@ -1,13 +1,12 @@
-package com.xm666.realisticcruelty.network;
+package com.moskowitz.realisticcruelty.network;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.IndirectEntityDamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.fml.util.thread.EffectiveSide;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 public enum HitType {
     MELEE {
@@ -25,7 +24,8 @@ public enum HitType {
     },
     INDIRECT {
         public Vec3 getPosition(Entity entity) {
-            return entity.getPosition(HitType.getPartialTick());
+            // Updated to use the correct position method
+            return entity.position();
         }
 
         public Vec3 getRotation(Entity entity) {
@@ -38,7 +38,7 @@ public enum HitType {
     },
     EXPLODE {
         public Vec3 getPosition(Entity entity) {
-            return entity.getPosition(HitType.getPartialTick());
+            return entity.position();
         }
 
         public Vec3 getRotation(Entity entity) {
@@ -53,6 +53,7 @@ public enum HitType {
     public static HitArg getHitArgRay(AABB aabb, HitArg hitArg) {
         Vec3 position = hitArg.position();
         Vec3 rotation = hitArg.rotation();
+        // Ensure ModUtil is also updated to your new package!
         double[] doubles = ModUtil.rayClip(aabb, position, rotation.x, rotation.y, rotation.z);
         if (doubles == null) {
             return null;
@@ -68,18 +69,20 @@ public enum HitType {
         return new HitArg(vec3, rotation);
     }
 
-
     public static float getPartialTick() {
-        if (EffectiveSide.get().isClient() && FMLEnvironment.dist.isClient()) {
-            return Minecraft.getInstance().getPartialTick();
+        // Updated to NeoForge check
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            return Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false);
         }
         return 1.0F;
     }
 
     public static HitType getHitType(DamageSource damageSource) {
-        if (damageSource.isExplosion()) {
+        // In 1.21.1, we check tags or the direct source entity
+        if (damageSource.is(net.minecraft.world.damagesource.DamageTypeTags.IS_EXPLOSION)) {
             return HitType.EXPLODE;
-        } else if (damageSource instanceof IndirectEntityDamageSource) {
+        } else if (damageSource.getDirectEntity() != damageSource.getEntity() && damageSource.getDirectEntity() != null) {
+            // If the thing that hit you isn't the person who "caused" it (like an arrow), it's indirect
             return HitType.INDIRECT;
         }
         return HitType.MELEE;
