@@ -1,6 +1,6 @@
-package com.xm666.realisticcruelty.network;
+package com.moskowitz.realisticcruelty.math; // Updated package path
 
-import com.xm666.realisticcruelty.CruelConfig;
+import com.moskowitz.realisticcruelty.CruelConfig;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.util.Mth;
@@ -8,6 +8,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class ModUtil {
+
     public static Vec3 orbClip(AABB aabb, Vec3 vec3) {
         double x = Mth.clamp(vec3.x, aabb.minX, aabb.maxX);
         double y = Mth.clamp(vec3.y, aabb.minY, aabb.maxY);
@@ -39,6 +40,7 @@ public class ModUtil {
         } else if (clipPoint(doubles, zd, xd, yd, aabb.maxZ, aabb.minX, aabb.maxX, aabb.minY, aabb.maxY, position.z, position.x, position.y)) {
             b = 3;
         }
+
         if (b == 0) {
             return null;
         } else if (b == 2) {
@@ -73,22 +75,23 @@ public class ModUtil {
         double d0 = position.x;
         double d1 = position.y;
         double d2 = position.z;
-        double rad = Math.toRadians(CruelConfig.bloodSpread.get());
-        double[] doubles;
-        doubles = ModUtil.VecToRotation(rotation);
-        double x = doubles[0] + (Math.random() * 2 - 1) * rad;
-        double y = doubles[1] + (Math.random() * 2 - 1) * rad;
-        rotation = ModUtil.rotationToVec(x, y).normalize().scale(speed * Math.random());
-        double d3 = rotation.x;
-        double d4 = rotation.y;
-        double d5 = rotation.z;
-        level.addParticle(particleOptions, d0, d1, d2, d3, d4, d5);
+        // Ensure config get() is cast or converted correctly to double
+        double rad = Math.toRadians(CruelConfig.bloodSpread.get().doubleValue());
+        
+        double[] rotationArr = ModUtil.VecToRotation(rotation);
+        double x = rotationArr[0] + (Math.random() * 2 - 1) * rad;
+        double y = rotationArr[1] + (Math.random() * 2 - 1) * rad;
+        
+        Vec3 finalRotation = ModUtil.rotationToVec(x, y).normalize().scale(speed * Math.random());
+        
+        level.addParticle(particleOptions, d0, d1, d2, finalRotation.x, finalRotation.y, finalRotation.z);
     }
 
     public static double[] VecToRotation(Vec3 vec3) {
         double sqrt = Math.sqrt(vec3.x * vec3.x + vec3.z * vec3.z);
         double x = -Mth.atan2(vec3.y, sqrt);
-        double y = Mth.atan2(vec3.z, vec3.x) - Mth.HALF_PI;
+        // Using Mth.PI constant for 1.21.1 clarity
+        double y = Mth.atan2(vec3.z, vec3.x) - (Mth.PI / 2.0);
         return new double[]{x, y};
     }
 
